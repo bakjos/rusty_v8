@@ -93,4 +93,8 @@ default_args = {
 
   # Disable C++ modules - they're not compatible with bindgen
   use_clang_modules = false
+  
+  v8_monolithic = true
+  v8_monolithic_for_shared_library = true
+
 }
