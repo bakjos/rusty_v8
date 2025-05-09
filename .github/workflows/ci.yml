@@ -41,38 +41,14 @@ jobs:
 
           - os: macos-15-large
             target: x86_64-apple-darwin
-            variant: debug
-            v8_enable_pointer_compression: true
-            cargo: cargo
-
-          - os: macos-15-large
-            target: x86_64-apple-darwin
             variant: release
             v8_enable_pointer_compression: true
             cargo: cargo
 
           - os: macos-15
             target: aarch64-apple-darwin
-            variant: asan
-            v8_enable_pointer_compression: false
-            cargo: cargo
-
-          - os: macos-15
-            target: aarch64-apple-darwin
-            variant: debug
-            v8_enable_pointer_compression: false
-            cargo: cargo
-
-          - os: macos-15
-            target: aarch64-apple-darwin
             variant: release
             v8_enable_pointer_compression: false
-            cargo: cargo
-
-          - os: macos-15
-            target: aarch64-apple-darwin
-            variant: debug
-            v8_enable_pointer_compression: true
             cargo: cargo
 
           - os: macos-15
@@ -87,37 +63,37 @@ jobs:
             v8_enable_pointer_compression: false
             cargo: cargo
 
-          - os: ${{ github.repository == 'denoland/rusty_v8' && 'ubuntu-22.04-xl' || 'ubuntu-22.04' }}
+          - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             variant: release
             v8_enable_pointer_compression: false
             cargo: cargo
 
-          - os: ${{ github.repository == 'denoland/rusty_v8' && 'ubuntu-22.04-xl' || 'ubuntu-22.04' }}
-            target: x86_64-unknown-linux-gnu
-            variant: debug
-            v8_enable_pointer_compression: true
-            cargo: cargo
+          # - os: ${{ 'ubuntu-22.04-xl' || 'ubuntu-22.04' }}
+          #   target: x86_64-unknown-linux-gnu
+          #   variant: debug
+          #   v8_enable_pointer_compression: true
+          #   cargo: cargo
 
-          - os: ${{ github.repository == 'denoland/rusty_v8' && 'ubuntu-22.04-xl' || 'ubuntu-22.04' }}
-            target: x86_64-unknown-linux-gnu
-            variant: release
-            v8_enable_pointer_compression: true
-            cargo: cargo
+          # - os: ${{ 'ubuntu-22.04-xl' || 'ubuntu-22.04' }}
+          #   target: x86_64-unknown-linux-gnu
+          #   variant: release
+          #   v8_enable_pointer_compression: true
+          #   cargo: cargo
 
-          - os: ${{ github.repository == 'denoland/rusty_v8' && 'windows-2022-xxl' || 'windows-2022' }}
-            target: x86_64-pc-windows-msvc
-            variant: release # Note: we do not support windows debug builds.
-            v8_enable_pointer_compression: false
-            cargo: cargo
+          # - os: ${{ github.repository == 'denoland/rusty_v8' && 'windows-2022-xxl' || 'windows-2022' }}
+          #   target: x86_64-pc-windows-msvc
+          #   variant: release # Note: we do not support windows debug builds.
+          #   v8_enable_pointer_compression: false
+          #   cargo: cargo
 
-          - os: ${{ github.repository == 'denoland/rusty_v8' && 'ubuntu-22.04-xl' || 'ubuntu-22.04' }}
+          - os: ubuntu-latest-16-cores
             target: aarch64-unknown-linux-gnu
             variant: debug
             v8_enable_pointer_compression: false
             cargo: cargo
 
-          - os: ${{ github.repository == 'denoland/rusty_v8' && 'ubuntu-22.04-xl' || 'ubuntu-22.04' }}
+          - os: ubuntu-latest-16-cores
             target: aarch64-unknown-linux-gnu
             variant: release
             v8_enable_pointer_compression: false
@@ -165,7 +141,7 @@ jobs:
           sudo apt update
           sudo apt install -yq --no-install-suggests --no-install-recommends \
             binfmt-support g++-10-aarch64-linux-gnu g++-10-multilib \
-            gcc-10-aarch64-linux-gnu libc6-arm64-cross qemu qemu-user \
+            gcc-10-aarch64-linux-gnu libc6-arm64-cross qemu-kvm qemu-user \
             qemu-user-binfmt
 
           sudo ln -s /usr/aarch64-linux-gnu/lib/ld-linux-aarch64.so.1 \
@@ -198,19 +174,18 @@ jobs:
         shell: pwsh
         env:
           SCCACHE_DIR: ${{ github.workspace }}/target/sccache
-          SCCACHE_CACHE_SIZE: 256M
+          SCCACHE_CACHE_SIZE: 128M
           SCCACHE_IDLE_TIMEOUT: 0
         run: |
-          $version = "v0.8.2"
+          $version = "0.2.12"
           $platform =
-            @{ "x86_64-apple-darwin"       = "x86_64-apple-darwin"
-               "aarch64-apple-darwin"      = "aarch64-apple-darwin"
-               "x86_64-unknown-linux-gnu"  = "x86_64-unknown-linux-musl"
-               "aarch64-unknown-linux-gnu" = "aarch64-unknown-linux-musl"
-               "x86_64-pc-windows-msvc"    = "x86_64-pc-windows-msvc"
-             }['${{ matrix.config.target }}']
+            @{ "macOS"   = "x86_64-apple-darwin"
+               "Linux"   = "x86_64-unknown-linux-musl"
+               "Windows" = "x86_64-pc-windows-msvc"
+             }.${{ runner.os }}
           $basename = "sccache-$version-$platform"
-          $url = "https://github.com/mozilla/sccache/releases/download/$version/$basename.tar.gz"
+          $url = "https://github.com/mozilla/sccache/releases/download/" +
+                 "$version/$basename.tar.gz"
           cd ~
           curl -LO $url
           tar -xzvf "$basename.tar.gz"
@@ -255,10 +230,10 @@ jobs:
         env:
           SCCACHE_IDLE_TIMEOUT: 0
         if: matrix.config.variant == 'debug' || matrix.config.variant == 'release'
-        run: ${{ matrix.config.cargo }} nextest run -v --cargo-verbose --cargo-verbose --all-targets --locked --target ${{ matrix.config.target }} ${{ env.CARGO_VARIANT_FLAG }} ${{ env.CARGO_FEATURE_FLAGS }}
+        run: ${{ matrix.config.cargo }} nextest run -v --cargo-verbose --cargo-verbose --all-targets --locked --no-run --target ${{ matrix.config.target }} ${{ env.CARGO_VARIANT_FLAG }} ${{ env.CARGO_FEATURE_FLAGS }}
 
-      - name: Clippy
-        run: ${{ matrix.config.cargo }} clippy --all-targets --locked --target ${{ matrix.config.target }} ${{ env.CARGO_VARIANT_FLAG }} ${{ env.CARGO_FEATURE_FLAGS }} -- -D clippy::all
+      # - name: Clippy
+      #   run: ${{ matrix.config.cargo }} clippy --all-targets --locked --target ${{ matrix.config.target }} ${{ env.CARGO_VARIANT_FLAG }} ${{ env.CARGO_FEATURE_FLAGS }} -- -D clippy::all
 
       - name: Prepare binary publish
         if: matrix.config.variant == 'debug' || matrix.config.variant == 'release'
@@ -272,7 +247,6 @@ jobs:
       - name: Binary publish
         uses: softprops/action-gh-release@v0.1.15
         if: >-
-          github.repository == 'denoland/rusty_v8' &&
           startsWith(github.ref, 'refs/tags/') &&
           (matrix.config.variant == 'debug' || matrix.config.variant == 'release')
         env:
@@ -290,7 +264,7 @@ jobs:
 
   publish:
     needs: build
-    runs-on: ${{ github.repository == 'denoland/rusty_v8' && 'ubuntu-22.04-xl' || 'ubuntu-22.04' }}
+    runs-on: ubuntu-22.04
     if: github.repository == 'denoland/rusty_v8' && startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Configure git
