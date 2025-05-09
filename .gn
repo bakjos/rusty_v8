@@ -96,4 +96,8 @@ default_args = {
   icu_copy_icudata_to_root_build_dir = false
 
   v8_safe_string_hasher = true
+  
+  v8_monolithic = true
+  v8_monolithic_for_shared_library = true
+
 }
